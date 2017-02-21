@@ -6,11 +6,18 @@ using System.Threading.Tasks;
 
 namespace GeneBankReader
 {
-    class SearchSiteCollection : System.Collections.CollectionBase
+    class SearchSiteCollection
     {
-        public void AddGene(SearchSite searchSite)
+        public List<SearchSite> collection { get; set; } = new List<SearchSite>();
+        public String searchSiteRegexMessage { get; set; } = "";
+        public void AddSearchSite(SearchSite site)
         {
-            List.Add(searchSite);
+            collection.Add(site);
+        }
+
+        public void Sort()
+        {
+            collection.Sort(delegate (SearchSite site1, SearchSite site2) { return site1.GeneName.CompareTo(site2.GeneName); });
         }
     }
 }

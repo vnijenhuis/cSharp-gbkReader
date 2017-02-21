@@ -6,11 +6,17 @@ using System.Threading.Tasks;
 
 namespace GeneBankReader
 {
-    class CodingSequenceCollection : System.Collections.CollectionBase
+    class CodingSequenceCollection
     {
-        public void AddCodingSequence(CodingSequence codingSequence)
+        public List<CodingSequence> collection { get; set; } = new List<CodingSequence>();
+        public void AddCodingSequence(CodingSequence cds)
         {
-            List.Add(codingSequence);
+            collection.Add(cds);
+        }
+
+        public void Sort()
+        {
+            collection.Sort(delegate (CodingSequence cds1, CodingSequence cds2) { return cds1.GeneID.CompareTo(cds2.GeneID); });
         }
     }
 }

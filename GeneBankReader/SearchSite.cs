@@ -10,7 +10,7 @@ namespace GeneBankReader
     {
         public String Site { get; private set; }
         public String StartPosition { get; private set; }
-        public String GeneName { get; private set; }
+        public String GeneName { get; set; }
         
         public SearchSite(string site, string start, string geneName)
         {

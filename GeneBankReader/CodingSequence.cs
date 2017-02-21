@@ -13,8 +13,8 @@ namespace GeneBankReader
         public String TranslatedSequence { get; private set; }
         public String GeneProduct { get; private set; }
         public String ProteinID { get; private set; }
-        public int StartCoordinate { get; private set; }
-        public int EndCoordinate { get; private set; }
+        public Int32 StartCoordinate { get; private set; }
+        public Int32 EndCoordinate { get; private set; }
         public Boolean IsReverse { get; private set; }
 
         public CodingSequence(string locusTag, string geneId, string translatedSequence, string geneProduct, bool isReverse, int start, int end, string proteinId)

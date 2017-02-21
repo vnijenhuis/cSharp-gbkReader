@@ -10,13 +10,12 @@ namespace GeneBankReader
 {
     class FileReader
     {
-        public string ReadGenebankFile(string inputFile)
+        public CollectedGeneBankData ReadGenebankFile(string inputFile)
         {
             //Split path to get file name.
             GeneCollection geneCollection = new GeneCollection();
             CodingSequenceCollection codingSequenceCollection = new CodingSequenceCollection();
-            string[] folders = inputFile.Split(Path.PathSeparator);
-            string fileName = folders[folders.Length - 1];
+            string fileName = Path.GetFileName(inputFile);
             string organism = "";
             string accession = "";
             string length = "";
@@ -36,11 +35,10 @@ namespace GeneBankReader
             string gbkLine;
             while ((gbkLine = reader.ReadLine()) != null)
             {
-                Console.WriteLine(gbkLine);
                 //All comming lines contain nucleotide data which can be added to the origin sequence.
                 if (isOrigin)
                 {
-                    originSequence += gbkLine.Replace(" ", "").Replace("\\d", "");
+                    originSequence += Regex.Replace(gbkLine, "(\\d| )", "");
                 }
                 //Only occurs untill first entry is false.
                 if (isFirst)
@@ -98,7 +96,8 @@ namespace GeneBankReader
                 {
                     //Set isOrigin to true: first if statement will be handled.
                     isOrigin = true;
-                    originSequence += gbkLine.Replace(" ", "").Replace("\\d", "").Replace("ORIGIN", "");
+                    string line = gbkLine.Replace("ORIGIN", "");
+                    originSequence += Regex.Replace(line, "(\\d| )", "");
                     if (currentEntryIsCDS)
                     {
                         currentEntryIsCDS = false;
@@ -113,10 +112,22 @@ namespace GeneBankReader
                     }
                 }
             }
-            int geneCount = geneCollection.Count; //Size of gene collection
-            int cdsCount = codingSequenceCollection.Count; //Size of coding sequence collection
+            int geneCount = geneCollection.collection.Count; //Size of gene collection
+            int cdsCount = codingSequenceCollection.collection.Count; //Size of coding sequence collection
             double totalGeneCounter = 0.0;
             double forwardGeneCounter = 0.0;
+            foreach (Gene geneEntry in geneCollection.collection)
+            {
+                if (!geneEntry.IsReverse)
+                {
+                    totalGeneCounter++;
+                    forwardGeneCounter++;
+                }
+                else
+                {
+                    totalGeneCounter++;
+                }
+            }
             //Forward/Reverse (FR) ratio calculation.
             double value = (forwardGeneCounter / totalGeneCounter);
             double forwardReverseBalance = Math.Round(value, 1);
@@ -124,14 +135,14 @@ namespace GeneBankReader
             //For each gene: if gene isForward or !isReverse > +1 to total and foward
             //else +1 to total
             Summary summary = new Summary(fileName, organism, accession, length, geneCount, forwardReverseBalance, cdsCount, originSequence);
-            return null;
+            CollectedGeneBankData geneBankeData = new CollectedGeneBankData(geneCollection, codingSequenceCollection, summary);
+            return geneBankeData;
         }
 
         public Gene CreateGeneEntry(string currentEntryData)
         {
             string locusTag = "";
             string geneId = "";
-            string sequence = "";
             bool isReverse = true;
             int start = 0;
             int end = 0;
@@ -140,18 +151,33 @@ namespace GeneBankReader
             {
                 string[] splitItem = item.Split(' ');
                 string geneData = splitItem[splitItem.Length - 1];
-                if (Regex.IsMatch(geneData, "\\d*\\.\\.\\d*"))
+                if (Regex.IsMatch(geneData, "complement\\(\\d*\\.\\.\\d*\\)"))
                 {
-                    string[] split = Regex.Split(geneData, @"\.\.");
-                    start = Int32.Parse(split[0]);
-                    end = Int32.Parse(split[1]);
+                    String substring = geneData.Substring(11);
+                    string replaceData = substring.Replace(")", "");
+                    string[] coordinates = Regex.Split(replaceData, @"\.\.");
+                    start = Int32.Parse(coordinates[0]);
+                    end = Int32.Parse(coordinates[1]);
+                    isReverse = true;
+                }
+                else if(Regex.IsMatch(geneData, "\\d*\\.\\.\\d*"))
+                {
+                    string[] coordinates = Regex.Split(geneData, @"\.\.");
+                    start = Int32.Parse(coordinates[0]);
+                    end = Int32.Parse(coordinates[1]);
                     isReverse = false;
-                } else if (Regex.IsMatch(geneData, "complement\\(\\d*\\.\\.\\d*\\)"))
+                } else  if (geneData.Contains("/gene"))
                 {
-
+                    String geneSplit = item.Split('=')[1];
+                    geneId = geneSplit.Substring(1, geneSplit.Length - 2);
+                }
+                else if (geneData.Contains("/locus_tag"))
+                {
+                    String locusSplit = item.Split('=')[1];
+                    locusTag = locusSplit.Substring(1, locusSplit.Length - 2);
                 }
             }
-            Gene gene = new Gene(locusTag, geneId, sequence, isReverse, start, end);
+            Gene gene = new Gene(locusTag, geneId, isReverse, start, end);
             return gene;
         }
         public CodingSequence CreateCodingSequenceEntry(string currentEntryData)
@@ -172,15 +198,7 @@ namespace GeneBankReader
                 //string[] geneData = entryLines.Where(line => !string.IsNullOrEmpty(line)).ToArray();
                 string[] splitItem = item.Split(' ');
                 string cdsData = splitItem[splitItem.Length - 1];
-                if (Regex.IsMatch(cdsData, "\\d*\\.\\.\\d*"))
-                {
-                    //string[] coordinateSplit = data.Split(new[] { ".." }, StringSplitOptions.None);
-                    string[] coordinates = Regex.Split(cdsData, @"\.\.");
-                    start = Int32.Parse(coordinates[0]);
-                    end = Int32.Parse(coordinates[1]);
-                    isReverse = false;
-
-                } else if (Regex.IsMatch(cdsData, "complement\\(\\d*\\.\\.\\d*\\)"))
+                if (Regex.IsMatch(cdsData, "complement\\(\\d*\\.\\.\\d*\\)"))
                 {
                     String substring = cdsData.Substring(11);
                     string replaceData = substring.Replace(")", "");
@@ -189,36 +207,44 @@ namespace GeneBankReader
                     end = Int32.Parse(coordinates[1]);
                     isReverse = true;
 
+                } else if (Regex.IsMatch(cdsData, "\\d*\\.\\.\\d*"))
+                {
+                    //string[] coordinateSplit = data.Split(new[] { ".." }, StringSplitOptions.None);
+                    string[] coordinates = Regex.Split(cdsData, @"\.\.");
+                    start = Int32.Parse(coordinates[0]);
+                    end = Int32.Parse(coordinates[1]);
+                    isReverse = false;
+
                 } else if (item.Contains("/gene") )
                 {
-                    string[] split = cdsData.Split('=');
-                    geneId = split[1].Replace("\"", "");
+                    string split = item.Split('=')[1];
+                    geneId = split.Replace("\"", "");
                 }
                 else if (item.Contains("/locus_tag"))
                 {
-                    string[] split = cdsData.Split('=');
-                    locusTag = split[1].Replace("\"", "");
+                    string split = item.Split('=')[1];
+                    locusTag = split.Replace("\"", "");
                 }
                 else if (item.Contains("/product"))
                 {
-                    string[] split = cdsData.Split('=');
-                    geneProduct = split[1].Replace("\"", "");
+                    string split = item.Split('=')[1];
+                    geneProduct = split.Replace("\"", "");
                 }
                 else if (item.Contains("/protein_id"))
                 {
-                    string[] split = cdsData.Split('=');
-                    proteinId = split[1].Replace("\"", "");
+                    string split = item.Split('=')[1];
+                    proteinId = split.Replace("\"", "");
                 }
                 else if (item.Contains("/translation") && !foundTranslatedSequence)
                 {
-                    string[] split = cdsData.Split('=');
-                    translatedSequence = split[1].Replace("\"", "");
+                    String sequence = splitItem[splitItem.Length - 2];
+                    translatedSequence += sequence.Substring(0, sequence.Length);
                     foundTranslatedSequence = true;
                 }
-                else if (foundTranslatedSequence && !item.Contains("ORIGIN"))
+                else if (foundTranslatedSequence && !item.Contains("ORIGIN") && item != "")
                 {
-                    string sequence = splitItem[splitItem.Length - 1];
-                    translatedSequence += sequence.Substring(0, sequence.Length);
+                    String sequence = item.Replace(" ","");
+                    translatedSequence += sequence.Substring(0, sequence.Length -1);
                 }
             }
 
@@ -259,9 +285,10 @@ namespace GeneBankReader
             string sequenceLength = "";
             foreach (string item in splitLine)
             {
-                if (!item.Equals("") && Regex.IsMatch(item, "\\d"))
+                if (!item.Equals("") && Regex.IsMatch(item, "^\\d"))
                 {
-                    sequenceLength = item;
+                    sequenceLength = item + " bp";
+                    break;
                 }
             }
             return sequenceLength;

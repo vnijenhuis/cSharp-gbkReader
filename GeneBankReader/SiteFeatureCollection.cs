@@ -6,11 +6,17 @@ using System.Threading.Tasks;
 
 namespace GeneBankReader
 {
-    class SiteFeatureCollection : System.Collections.CollectionBase
+    class SiteFeatureCollection
     {
-        public void AddGene(SiteFeature siteFeature)
+        public List<SiteFeature> collection { get; set; } = new List<SiteFeature>();
+        public void AddSiteFeature(SiteFeature feature)
         {
-            List.Add(siteFeature);
+            collection.Add(feature);
+        }
+
+        public void Sort()
+        {
+            collection.Sort(delegate (SiteFeature feature1, SiteFeature feature2) { return feature1.GeneID.CompareTo(feature2.GeneID); });
         }
     }
 }

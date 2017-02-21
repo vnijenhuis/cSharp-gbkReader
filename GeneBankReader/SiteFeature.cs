@@ -10,8 +10,8 @@ namespace GeneBankReader
     {
         public String GeneID { get; private set; }
         public String Type { get; private set; }
-        public int StartCoordinate { get; private set; }
-        public int EndCoordinate { get; private set; }
+        public Int32 StartCoordinate { get; private set; }
+        public Int32 EndCoordinate { get; private set; }
         public String Orientation { get; private set; }
 
         public SiteFeature(string geneId, string type, int start, int end, string orientation)

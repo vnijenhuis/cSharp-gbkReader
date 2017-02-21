@@ -63,6 +63,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CodingSequenceCollection.cs" />
+    <Compile Include="GbkFeatureFetcher.cs" />
+    <Compile Include="GeneBankDataCollection.cs" />
+    <Compile Include="GeneBankDisplayFetcher.cs" />
     <Compile Include="GeneCollection.cs" />
     <Compile Include="SearchSite.cs" />
     <Compile Include="SearchSiteCollection.cs" />
